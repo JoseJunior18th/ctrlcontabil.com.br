@@ -8,8 +8,8 @@ from urllib.parse import urlencode
 import httpx
 import jwt
 from fastapi import HTTPException, status
-from jwt import InvalidTokenError, PyJWKClient
-from pydantic import BaseModel, ConfigDict, Field
+from jwt import InvalidTokenError, PyJWKClient, PyJWKClientError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .config import Settings
 from .models import AuthenticatedPrincipal
@@ -67,11 +67,22 @@ async def get_oidc_metadata(settings: Settings) -> OIDCMetadata:
     if _metadata_cache and _metadata_cache[1] > now:
         return _metadata_cache[0]
 
-    async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
-        response = await client.get(discovery_url(settings), headers={"Accept": "application/json"})
-        response.raise_for_status()
+    try:
+        async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
+            response = await client.get(
+                discovery_url(settings),
+                headers={"Accept": "application/json"},
+            )
+            response.raise_for_status()
 
-    metadata = OIDCMetadata.model_validate(response.json())
+        metadata = OIDCMetadata.model_validate(response.json())
+    except (httpx.HTTPError, ValidationError) as exc:
+        LOGGER.warning("OIDC discovery failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Provedor de autenticacao indisponivel.",
+        ) from exc
+
     _metadata_cache = (metadata, now + 300)
     return metadata
 
@@ -136,25 +147,43 @@ async def exchange_authorization_code(
         "redirect_uri": f"{settings.api_base_url.rstrip('/')}/auth/callback",
     }
 
-    async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
-        response = await client.post(
-            metadata.token_endpoint,
-            auth=httpx.BasicAuth(
-                settings.authentik_client_id,
-                settings.authentik_client_secret.get_secret_value(),
-            ),
-            data=data,
-            headers={"Accept": "application/json"},
-        )
+    try:
+        async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
+            response = await client.post(
+                metadata.token_endpoint,
+                auth=httpx.BasicAuth(
+                    settings.authentik_client_id,
+                    settings.authentik_client_secret.get_secret_value(),
+                ),
+                data=data,
+                headers={"Accept": "application/json"},
+            )
+    except httpx.HTTPError as exc:
+        LOGGER.warning("OIDC token exchange request failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Provedor de autenticacao indisponivel.",
+        ) from exc
 
     if response.status_code >= 400:
-        LOGGER.warning("OIDC token exchange failed with status %s", response.status_code)
+        LOGGER.warning(
+            "OIDC token exchange failed with status %s: %s",
+            response.status_code,
+            response.text[:500],
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Falha na autenticacao.",
         )
 
-    return OIDCTokenResponse.model_validate(response.json())
+    try:
+        return OIDCTokenResponse.model_validate(response.json())
+    except ValidationError as exc:
+        LOGGER.warning("OIDC token response was invalid: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Resposta de autenticacao invalida.",
+        ) from exc
 
 
 async def verify_authentik_jwt(
@@ -176,7 +205,7 @@ async def verify_authentik_jwt(
             issuer=metadata.issuer,
             options={"require": ["aud", "exp", "iat", "iss", "sub"]},
         )
-    except InvalidTokenError as exc:
+    except (InvalidTokenError, PyJWKClientError) as exc:
         LOGGER.info("Rejected invalid Authentik JWT: %s", exc.__class__.__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
