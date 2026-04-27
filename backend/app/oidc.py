@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlencode
 
 import httpx
 import jwt
 from fastapi import HTTPException, status
-from jwt import InvalidTokenError, PyJWKClient, PyJWKClientError
+from jwt import InvalidTokenError, PyJWK
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .config import Settings
@@ -50,7 +50,7 @@ class OIDCTokenResponse(BaseModel):
 
 
 _metadata_cache: tuple[OIDCMetadata, float] | None = None
-_jwks_clients: dict[str, PyJWKClient] = {}
+_jwks_cache: dict[str, tuple[dict[str, Any], float]] = {}
 
 
 def discovery_url(settings: Settings) -> str:
@@ -85,6 +85,70 @@ async def get_oidc_metadata(settings: Settings) -> OIDCMetadata:
 
     _metadata_cache = (metadata, now + 300)
     return metadata
+
+
+async def get_jwks(metadata: OIDCMetadata, settings: Settings) -> dict[str, Any]:
+    now = time.monotonic()
+    cached = _jwks_cache.get(metadata.jwks_uri)
+    if cached and cached[1] > now:
+        return cached[0]
+
+    try:
+        async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
+            response = await client.get(metadata.jwks_uri, headers={"Accept": "application/json"})
+            response.raise_for_status()
+
+        data = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        LOGGER.warning("OIDC JWKS fetch failed from %s: %s", metadata.jwks_uri, exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chaves do provedor de autenticacao indisponiveis.",
+        ) from exc
+
+    if not isinstance(data, dict):
+        LOGGER.warning("OIDC JWKS response from %s was not an object.", metadata.jwks_uri)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chaves do provedor de autenticacao invalidas.",
+        )
+
+    jwks = cast(dict[str, Any], data)
+    _jwks_cache[metadata.jwks_uri] = (jwks, now + 300)
+    return jwks
+
+
+def signing_key_from_jwks(token: str, jwks: dict[str, Any]) -> Any:
+    try:
+        header = jwt.get_unverified_header(token)
+    except InvalidTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token invalido.",
+        ) from exc
+
+    token_kid = header.get("kid")
+    token_alg = header.get("alg")
+    keys = jwks.get("keys")
+    if not isinstance(keys, list):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chaves do provedor de autenticacao invalidas.",
+        )
+
+    for key_data in keys:
+        if not isinstance(key_data, dict):
+            continue
+        if token_kid and key_data.get("kid") != token_kid:
+            continue
+        if token_alg and key_data.get("alg") and key_data.get("alg") != token_alg:
+            continue
+        return PyJWK.from_dict(key_data, algorithm=token_alg).key
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Chave de assinatura do token nao encontrada.",
+    )
 
 
 def issue_oidc_state_cookie(state: OIDCState, settings: Settings) -> str:
@@ -138,6 +202,20 @@ def build_authorization_url(metadata: OIDCMetadata, state: OIDCState, settings: 
     return f"{metadata.authorization_endpoint}?{urlencode(params)}"
 
 
+def _jwt_diagnostic(token: str) -> str:
+    segment_count = token.count(".") + 1
+    try:
+        header = jwt.get_unverified_header(token)
+    except InvalidTokenError as exc:
+        return f"segments={segment_count} header_error={exc.__class__.__name__}"
+
+    alg = header.get("alg")
+    kid = header.get("kid")
+    typ = header.get("typ")
+    enc = header.get("enc")
+    return f"segments={segment_count} alg={alg!r} typ={typ!r} kid={kid!r} enc={enc!r}"
+
+
 async def exchange_authorization_code(
     *,
     code: str,
@@ -183,13 +261,16 @@ async def exchange_authorization_code(
         )
 
     try:
-        return OIDCTokenResponse.model_validate(response.json())
+        tokens = OIDCTokenResponse.model_validate(response.json())
     except ValidationError as exc:
         LOGGER.warning("OIDC token response was invalid: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Resposta de autenticacao invalida.",
         ) from exc
+
+    LOGGER.info("OIDC id_token diagnostic: %s", _jwt_diagnostic(tokens.id_token))
+    return tokens
 
 
 async def verify_authentik_jwt(
@@ -199,20 +280,25 @@ async def verify_authentik_jwt(
     expected_nonce: str | None = None,
 ) -> dict[str, Any]:
     metadata = await get_oidc_metadata(settings)
-    jwks_client = _jwks_clients.setdefault(metadata.jwks_uri, PyJWKClient(metadata.jwks_uri))
+    jwks = await get_jwks(metadata, settings)
 
     try:
-        signing_key = jwks_client.get_signing_key_from_jwt(token)
+        signing_key = signing_key_from_jwks(token, jwks)
         payload = jwt.decode(
             token,
-            signing_key.key,
+            signing_key,
             algorithms=settings.authentik_algorithms,
             audience=settings.authentik_client_id,
             issuer=metadata.issuer,
             options={"require": ["aud", "exp", "iat", "iss", "sub"]},
         )
-    except (InvalidTokenError, PyJWKClientError) as exc:
-        LOGGER.info("Rejected invalid Authentik JWT: %s", exc.__class__.__name__)
+    except InvalidTokenError as exc:
+        LOGGER.info(
+            "Rejected invalid Authentik JWT: %s: %s; %s",
+            exc.__class__.__name__,
+            exc,
+            _jwt_diagnostic(token),
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token invalido.",
