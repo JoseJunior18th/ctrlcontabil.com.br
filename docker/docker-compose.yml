@@ -1,0 +1,56 @@
+services:
+  web:
+    container_name: ctrlcontabil-web
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: always
+    ports:
+      - "127.0.0.1:8232:8232"
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      PORT: 8232
+      API_BASE_URL: ${API_BASE_URL:-https://ctrlcontabil.josejunior.eng.br}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://ctrlcontabil.josejunior.eng.br}
+      API_INTERNAL_BASE_URL: http://api:5075
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-__Host-ctrl_session}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - egress
+
+  api:
+    container_name: ctrlcontabil-api
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    restart: always
+    ports:
+      - "127.0.0.1:5075:5075"
+    env_file:
+      - ../.env
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      API_BASE_URL: ${API_BASE_URL:-https://ctrlcontabil.josejunior.eng.br}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://ctrlcontabil.josejunior.eng.br}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; req=urllib.request.Request('http://127.0.0.1:5075/healthz', headers={'X-Forwarded-Proto':'https'}); urllib.request.urlopen(req, timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - egress
+
+networks:
+  egress:
+    driver: bridge

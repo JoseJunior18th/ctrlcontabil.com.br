@@ -1,1 +1,60 @@
-# ctrlcontabil.com.br
+# Ctrl Contabil
+
+## Estrutura
+
+```text
+docker/              Dockerfiles, Compose e exemplo de variaveis
+infra/nginx/         Configuracao Nginx de producao
+web/                 Aplicacao Next.js
+backend/             API FastAPI
+```
+
+Host inicial de producao:
+
+```text
+https://ctrlcontabil.josejunior.eng.br
+```
+
+Callback OIDC no Authentik:
+
+```text
+https://ctrlcontabil.josejunior.eng.br/auth/callback
+```
+
+Issuer OIDC esperado:
+
+```text
+https://authentik.onneonline.com.br/application/o/ctrlcontabil/
+```
+
+## Desenvolvimento
+
+Frontend:
+
+```powershell
+cd web
+npm install
+npm run dev
+```
+
+Backend:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\pip install -e ".[test]"
+.\.venv\Scripts\uvicorn app.main:app --reload --port 8000
+```
+
+## Deploy com Docker
+
+Use `.env` na raiz do projeto para os valores reais de producao. O modelo fica em
+`docker/env.example`.
+
+```powershell
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+O Compose publica o Next em `127.0.0.1:8232` e a API em `127.0.0.1:5075`.
+O Nginx em `infra/nginx/ctrlcontabil.josejunior.eng.br.conf` faz o roteamento
+same-origin para preservar o cookie `__Host-ctrl_session`.

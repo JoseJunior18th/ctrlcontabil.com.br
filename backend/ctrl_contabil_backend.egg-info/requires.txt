@@ -1,0 +1,15 @@
+email-validator<3.0.0,>=2.2.0
+fastapi<1.0.0,>=0.115.0
+httpx<1.0.0,>=0.27.0
+pydantic-settings<3.0.0,>=2.4.0
+PyJWT[crypto]<3.0.0,>=2.10.0
+python-multipart<1.0.0,>=0.0.20
+uvicorn[standard]<1.0.0,>=0.30.0
+
+[saml]
+python3-saml<2.0.0,>=1.16.0
+
+[test]
+mypy<2.0.0,>=1.11.0
+pytest<9.0.0,>=8.3.0
+ruff<1.0.0,>=0.6.0
