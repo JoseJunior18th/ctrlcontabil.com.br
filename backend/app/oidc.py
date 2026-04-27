@@ -30,7 +30,7 @@ class OIDCMetadata(BaseModel):
 
 
 class OIDCState(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
     code_verifier: str = Field(min_length=43, max_length=128)
     nonce: str = Field(min_length=16, max_length=128)
@@ -115,7 +115,13 @@ def decode_oidc_state_cookie(token: str, settings: Settings) -> OIDCState:
             detail="Estado de autenticacao invalido.",
         ) from exc
 
-    return OIDCState.model_validate(payload)
+    try:
+        return OIDCState.model_validate(payload)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Estado de autenticacao invalido.",
+        ) from exc
 
 
 def build_authorization_url(metadata: OIDCMetadata, state: OIDCState, settings: Settings) -> str:
