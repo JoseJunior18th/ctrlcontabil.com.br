@@ -231,7 +231,7 @@ async def login(
         httponly=True,
         secure=settings.secure_cookies,
         samesite="lax",
-        path="/auth",
+        path="/",
         domain=settings.session_cookie_domain,
     )
     return response
@@ -292,7 +292,7 @@ async def callback(
     set_session_cookie(response, session_token, settings)
     response.delete_cookie(
         key=settings.auth_state_cookie_name,
-        path="/auth",
+        path="/",
         domain=settings.session_cookie_domain,
     )
     return response
