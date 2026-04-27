@@ -5,6 +5,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, status
 from fastapi.exceptions import RequestValidationError
@@ -89,6 +90,11 @@ rate_limiter = InMemoryRateLimiter(
 )
 revoked_subjects: dict[str, int] = {}
 revoked_sids: dict[str, int] = {}
+
+
+def auth_error_redirect(reason: str) -> RedirectResponse:
+    params = urlencode({"reason": reason})
+    return RedirectResponse(f"{settings.frontend_base_url.rstrip('/')}/auth/error?{params}")
 
 app = FastAPI(
     title=settings.app_name,
@@ -238,29 +244,47 @@ async def callback(
     state: Annotated[str | None, Query(max_length=256)] = None,
     error: Annotated[str | None, Query(max_length=120)] = None,
 ) -> RedirectResponse:
-    if error or not code or not state:
-        return RedirectResponse(f"{settings.frontend_base_url.rstrip('/')}/auth/error")
+    if error:
+        LOGGER.warning("OIDC provider returned error during callback: %s", error)
+        reason = "provider_denied" if error == "access_denied" else "provider_error"
+        return auth_error_redirect(reason)
+
+    if not code or not state:
+        LOGGER.warning("OIDC callback missing code or state.")
+        return auth_error_redirect("missing_callback_params")
 
     state_cookie = request.cookies.get(settings.auth_state_cookie_name)
     if not state_cookie:
-        return RedirectResponse(f"{settings.frontend_base_url.rstrip('/')}/auth/error")
+        LOGGER.warning("OIDC callback received without state cookie.")
+        return auth_error_redirect("missing_state_cookie")
 
-    oidc_state = decode_oidc_state_cookie(state_cookie, settings)
+    try:
+        oidc_state = decode_oidc_state_cookie(state_cookie, settings)
+    except HTTPException:
+        LOGGER.warning("OIDC callback received an invalid state cookie.")
+        return auth_error_redirect("invalid_state_cookie")
+
     if oidc_state.state != state:
-        return RedirectResponse(f"{settings.frontend_base_url.rstrip('/')}/auth/error")
+        LOGGER.warning("OIDC callback state mismatch.")
+        return auth_error_redirect("state_mismatch")
 
     metadata = await get_oidc_metadata(settings)
-    tokens = await exchange_authorization_code(
-        code=code,
-        metadata=metadata,
-        oidc_state=oidc_state,
-        settings=settings,
-    )
-    claims = await verify_authentik_jwt(
-        tokens.id_token,
-        settings=settings,
-        expected_nonce=oidc_state.nonce,
-    )
+    try:
+        tokens = await exchange_authorization_code(
+            code=code,
+            metadata=metadata,
+            oidc_state=oidc_state,
+            settings=settings,
+        )
+        claims = await verify_authentik_jwt(
+            tokens.id_token,
+            settings=settings,
+            expected_nonce=oidc_state.nonce,
+        )
+    except HTTPException as exc:
+        LOGGER.warning("OIDC callback failed after provider redirect: %s", exc.status_code)
+        return auth_error_redirect("token_validation_failed")
+
     principal = principal_from_claims(claims)
     session_token = issue_session_token(principal, settings)
 

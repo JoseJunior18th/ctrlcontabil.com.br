@@ -19,7 +19,7 @@ const cspDirectives = [
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   `script-src ${scriptPolicy}`,
-  `connect-src 'self' ${apiBaseUrl} https://vitals.vercel-insights.com`
+  `connect-src 'self' ${apiBaseUrl}`
 ]
 
 if (!isDevelopment) {

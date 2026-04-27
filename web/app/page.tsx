@@ -1,5 +1,4 @@
 import Image from "next/image"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { getLoginUrl } from "@/lib/server/auth"
 
@@ -115,7 +114,7 @@ export default function LoginPage() {
           {/* Autenticacao */}
           <div className="bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
             <Button asChild className="w-full h-12 font-medium text-base">
-              <Link href={loginUrl}>Entrar com Authentik</Link>
+              <a href={loginUrl}>Entrar com Authentik</a>
             </Button>
 
             <div className="mt-6 pt-6 border-t border-border">
