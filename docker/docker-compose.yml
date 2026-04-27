@@ -7,15 +7,13 @@ services:
     restart: always
     ports:
       - "127.0.0.1:8232:8232"
-    env_file:
-      - ../.env
     environment:
-      NODE_ENV: production
-      PORT: 8232
-      API_BASE_URL: ${API_BASE_URL:-https://ctrlcontabil.josejunior.eng.br}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://ctrlcontabil.josejunior.eng.br}
-      API_INTERNAL_BASE_URL: http://api:5075
-      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-__Host-ctrl_session}
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      API_BASE_URL: ${API_BASE_URL}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      API_INTERNAL_BASE_URL: ${API_INTERNAL_BASE_URL}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME}
     depends_on:
       api:
         condition: service_healthy
@@ -30,12 +28,30 @@ services:
     restart: always
     ports:
       - "127.0.0.1:5075:5075"
-    env_file:
-      - ../.env
     environment:
-      ENVIRONMENT: ${ENVIRONMENT:-production}
-      API_BASE_URL: ${API_BASE_URL:-https://ctrlcontabil.josejunior.eng.br}
-      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://ctrlcontabil.josejunior.eng.br}
+      ENVIRONMENT: ${ENVIRONMENT}
+      API_BASE_URL: ${API_BASE_URL}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+      AUTHENTIK_ISSUER: ${AUTHENTIK_ISSUER}
+      AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID}
+      AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET}
+      AUTHENTIK_ALGORITHMS: ${AUTHENTIK_ALGORITHMS}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME}
+      SECURE_COOKIES: ${SECURE_COOKIES}
+      ENABLE_HTTPS_REDIRECT: ${ENABLE_HTTPS_REDIRECT}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      ALLOWED_RETURN_HOSTS: ${ALLOWED_RETURN_HOSTS}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS}
+      # Enable only if this deployment uses SAML.
+      # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID}
+      # SAML_IDP_SSO_URL: ${SAML_IDP_SSO_URL}
+      # SAML_IDP_SLO_URL: ${SAML_IDP_SLO_URL}
+      # SAML_IDP_X509_CERT: ${SAML_IDP_X509_CERT}
+      # SAML_SP_X509_CERT: ${SAML_SP_X509_CERT}
+      # SAML_SP_PRIVATE_KEY: ${SAML_SP_PRIVATE_KEY}
     healthcheck:
       test:
         [

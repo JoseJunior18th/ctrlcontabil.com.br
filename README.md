@@ -48,11 +48,14 @@ python -m venv .venv
 
 ## Deploy com Docker
 
-Use `.env` na raiz do projeto para os valores reais de producao. O modelo fica em
-`docker/env.example`.
+Use `docker/.env` para os valores reais de producao. O modelo fica em
+`docker/env.example`. Esse arquivo e usado apenas pelo Docker Compose para
+interpolar o bloco `environment:` dos servicos; ele nao e copiado para a imagem
+nem precisa existir dentro de `web/` ou `backend/`.
 
-```powershell
-docker compose -f docker/docker-compose.yml up -d --build
+```bash
+cp docker/env.example docker/.env
+docker compose --env-file docker/.env -f docker/docker-compose.yml up -d --build
 ```
 
 O Compose publica o Next em `127.0.0.1:8232` e a API em `127.0.0.1:5075`.

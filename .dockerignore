@@ -1,6 +1,7 @@
 .git
 .idea
 .env
+docker/.env
 *.pem
 
 .next
