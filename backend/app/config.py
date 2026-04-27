@@ -60,6 +60,7 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             "localhost",
             "127.0.0.1",
+            "api",
             "testserver",
             "ctrlcontabil.josejunior.eng.br",
         ]

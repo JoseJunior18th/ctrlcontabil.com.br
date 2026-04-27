@@ -3,11 +3,21 @@ import { NextRequest, NextResponse } from "next/server"
 const apiBaseUrl =
   process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 const apiInternalBaseUrl = process.env.API_INTERNAL_BASE_URL ?? apiBaseUrl
+const frontendBaseUrl = process.env.FRONTEND_BASE_URL?.replace(/\/+$/, "")
 const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? "__Host-ctrl_session"
+
+function buildReturnTo(request: NextRequest): string {
+  if (!frontendBaseUrl) {
+    return request.nextUrl.href
+  }
+
+  const returnTo = new URL(request.nextUrl.pathname + request.nextUrl.search, frontendBaseUrl)
+  return returnTo.toString()
+}
 
 function buildLoginRedirect(request: NextRequest): NextResponse {
   const loginUrl = new URL("/auth/login", apiBaseUrl)
-  loginUrl.searchParams.set("return_to", request.nextUrl.href)
+  loginUrl.searchParams.set("return_to", buildReturnTo(request))
   return NextResponse.redirect(loginUrl)
 }
 
