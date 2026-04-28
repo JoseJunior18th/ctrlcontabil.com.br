@@ -6,7 +6,7 @@ services:
       dockerfile: docker/Dockerfile
     restart: always
     ports:
-      - "127.0.0.1:8232:8232"
+      - "127.0.0.1:8230:8230"
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: ${PORT}

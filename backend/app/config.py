@@ -27,8 +27,8 @@ class Settings(BaseSettings):
 
     app_name: str = "Ctrl Contabil API"
     environment: Literal["development", "staging", "production", "test"] = "development"
-    api_base_url: str = "http://localhost:8000"
-    frontend_base_url: str = "http://localhost:3000"
+    api_base_url: str = "http://127.0.0.1:5075"
+    frontend_base_url: str = "http://127.0.0.1:8230"
 
     authentik_issuer: str = "https://authentik.onneonline.com.br/application/o/ctrlcontabil/"
     authentik_client_id: str = "ctrlcontabil"

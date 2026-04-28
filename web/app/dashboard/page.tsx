@@ -109,6 +109,7 @@ export default async function DashboardPage() {
   const displayName = session.name ?? session.preferredUsername ?? "Usuario"
   const roleLabel = session.roles[0] ?? session.groups[0] ?? "Usuario autenticado"
   const logoutUrl = getLogoutUrl("/")
+  const currentYear = new Date().getFullYear()
 
   return (
     <div className="min-h-screen bg-background">
@@ -294,23 +295,21 @@ export default async function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              2024 Ctrl Contábil. Todos os direitos reservados.
+              {currentYear} Ctrl Contábil. Todos os direitos reservados.
             </p>
             <div className="flex items-center gap-6">
-              <a
-                href="https://wa.me/5537996652670"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/suporte"
                 className="text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 Suporte
-              </a>
-              <button className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              </Link>
+              <Link href="/termos-de-uso" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Termos de Uso
-              </button>
-              <button className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              </Link>
+              <Link href="/privacidade" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Privacidade
-              </button>
+              </Link>
             </div>
           </div>
         </div>

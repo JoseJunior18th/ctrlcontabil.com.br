@@ -21,12 +21,12 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=8232
+ENV PORT=8230
 
 COPY --from=builder --chown=node:node /app ./
 
 USER node
 
-EXPOSE 8232
+EXPOSE 8230
 
-CMD ["npm", "run", "start"]
+CMD ["npx", "next", "start", "-H", "0.0.0.0", "-p", "8230"]

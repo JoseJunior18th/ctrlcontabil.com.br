@@ -1,4 +1,5 @@
 import Image from "next/image"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { getLoginUrl } from "@/lib/server/auth"
 
@@ -136,13 +137,13 @@ export default function LoginPage() {
           <div className="mt-8 text-center">
             <p className="text-xs text-muted-foreground">
               Ao entrar, você concorda com nossos{" "}
-              <button type="button" className="text-primary hover:underline font-medium">
+              <Link href="/termos-de-uso" className="text-primary hover:underline font-medium">
                 Termos de Uso
-              </button>{" "}
+              </Link>{" "}
               e{" "}
-              <button type="button" className="text-primary hover:underline font-medium">
+              <Link href="/privacidade" className="text-primary hover:underline font-medium">
                 Política de Privacidade
-              </button>
+              </Link>
             </p>
           </div>
         </div>

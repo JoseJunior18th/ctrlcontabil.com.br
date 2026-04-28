@@ -20,7 +20,7 @@ export function getApiBaseUrl(): string {
   return (
     process.env.API_BASE_URL ??
     process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8000"
+    "http://127.0.0.1:5075"
   ).replace(/\/+$/, "")
 }
 
@@ -32,7 +32,7 @@ export function getFrontendBaseUrl(): string {
   return (
     process.env.FRONTEND_BASE_URL ??
     process.env.NEXT_PUBLIC_FRONTEND_BASE_URL ??
-    "http://localhost:3000"
+    "http://127.0.0.1:8230"
   ).replace(/\/+$/, "")
 }
 

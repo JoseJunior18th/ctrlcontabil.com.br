@@ -8,7 +8,7 @@ FastAPI backend for production authentication and API boundaries.
 cd backend
 python -m venv .venv
 .\.venv\Scripts\pip install -e ".[test]"
-.\.venv\Scripts\uvicorn app.main:app --reload --port 8000
+.\.venv\Scripts\uvicorn app.main:app --reload --host 127.0.0.1 --port 5075
 ```
 
 ## Authentik OIDC
@@ -31,7 +31,7 @@ algorithms such as RS256.
 For the first production deployment, prefer a same-origin reverse proxy:
 
 ```text
-https://ctrlcontabil.josejunior.eng.br/        -> Next.js on 127.0.0.1:8232
+https://ctrlcontabil.josejunior.eng.br/        -> Next.js on 127.0.0.1:8230
 https://ctrlcontabil.josejunior.eng.br/auth/*  -> FastAPI on 127.0.0.1:5075
 https://ctrlcontabil.josejunior.eng.br/api/*   -> FastAPI on 127.0.0.1:5075
 ```

@@ -43,7 +43,7 @@ Backend:
 cd backend
 python -m venv .venv
 .\.venv\Scripts\pip install -e ".[test]"
-.\.venv\Scripts\uvicorn app.main:app --reload --port 8000
+.\.venv\Scripts\uvicorn app.main:app --reload --host 127.0.0.1 --port 5075
 ```
 
 ## Deploy com Docker
@@ -58,6 +58,6 @@ cp docker/env.example docker/.env
 docker compose --env-file docker/.env -f docker/docker-compose.yml up -d --build
 ```
 
-O Compose publica o Next em `127.0.0.1:8232` e a API em `127.0.0.1:5075`.
+O Compose publica o Next em `127.0.0.1:8230` e a API em `127.0.0.1:5075`.
 O Nginx em `infra/nginx/ctrlcontabil.josejunior.eng.br.conf` faz o roteamento
 same-origin para preservar o cookie `__Host-ctrl_session`.
