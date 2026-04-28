@@ -52,7 +52,8 @@ export async function getServerSession(): Promise<SessionUser | null> {
     const response = await fetch(`${getInternalApiBaseUrl()}/auth/session`, {
       cache: "no-store",
       headers: {
-        cookie: cookieHeader
+        cookie: cookieHeader,
+        "x-forwarded-proto": "https"
       }
     })
 

@@ -33,7 +33,8 @@ export async function middleware(request: NextRequest) {
     const response = await fetch(sessionUrl, {
       cache: "no-store",
       headers: {
-        cookie: request.headers.get("cookie") ?? ""
+        cookie: request.headers.get("cookie") ?? "",
+        "x-forwarded-proto": "https"
       }
     })
 
