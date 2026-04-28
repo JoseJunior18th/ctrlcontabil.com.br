@@ -88,7 +88,6 @@ rate_limiter = InMemoryRateLimiter(
     max_requests=settings.rate_limit_max_requests,
     window_seconds=settings.rate_limit_window_seconds,
 )
-revoked_subjects: dict[str, int] = {}
 revoked_sids: dict[str, int] = {}
 
 
@@ -179,8 +178,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 def _is_revoked(principal: AuthenticatedPrincipal) -> bool:
     now = int(time.time())
     if principal.sid and revoked_sids.get(principal.sid, 0) > now:
-        return True
-    if revoked_subjects.get(principal.sub, 0) > now:
         return True
     return False
 
@@ -323,10 +320,7 @@ async def backchannel_logout(logout_token: Annotated[str, Form(max_length=8192)]
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Logout invalido.")
 
     ttl_until = int(time.time()) + settings.session_ttl_seconds
-    sub = claims.get("sub")
     sid = claims.get("sid")
-    if isinstance(sub, str):
-        revoked_subjects[sub] = ttl_until
     if isinstance(sid, str):
         revoked_sids[sid] = ttl_until
 
