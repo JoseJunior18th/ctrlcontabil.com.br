@@ -28,6 +28,14 @@ export function getInternalApiBaseUrl(): string {
   return (process.env.API_INTERNAL_BASE_URL ?? getApiBaseUrl()).replace(/\/+$/, "")
 }
 
+export function getFrontendBaseUrl(): string {
+  return (
+    process.env.FRONTEND_BASE_URL ??
+    process.env.NEXT_PUBLIC_FRONTEND_BASE_URL ??
+    "http://localhost:3000"
+  ).replace(/\/+$/, "")
+}
+
 export function getLoginUrl(returnTo = "/dashboard"): string {
   const loginUrl = new URL("/auth/login", getApiBaseUrl())
   loginUrl.searchParams.set("return_to", returnTo)
@@ -35,8 +43,11 @@ export function getLoginUrl(returnTo = "/dashboard"): string {
 }
 
 export function getLogoutUrl(returnTo = "/"): string {
+  const normalizedReturnTo = returnTo.startsWith("/")
+    ? new URL(returnTo, getFrontendBaseUrl()).toString()
+    : returnTo
   const logoutUrl = new URL("/auth/logout", getApiBaseUrl())
-  logoutUrl.searchParams.set("return_to", returnTo)
+  logoutUrl.searchParams.set("return_to", normalizedReturnTo)
   return logoutUrl.toString()
 }
 

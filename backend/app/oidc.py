@@ -330,4 +330,9 @@ async def end_session_url(settings: Settings, return_to: str) -> str:
     endpoint = metadata.end_session_endpoint
     if not endpoint:
         endpoint = f"{settings.authentik_issuer.rstrip('/')}/end-session/"
-    return f"{endpoint}?{urlencode({'post_logout_redirect_uri': return_to})}"
+    params = {
+        "client_id": settings.authentik_client_id,
+        "next": return_to,
+        "post_logout_redirect_uri": return_to,
+    }
+    return f"{endpoint}?{urlencode(params)}"
