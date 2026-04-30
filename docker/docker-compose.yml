@@ -29,8 +29,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ctrlcontabil}
       POSTGRES_USER: ${POSTGRES_USER:-ctrlcontabil}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctrlcontabil}
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - ctrlcontabil-db-data:/var/lib/postgresql/data
     healthcheck:
