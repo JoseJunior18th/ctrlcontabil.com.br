@@ -81,10 +81,10 @@ export default function SuportePage() {
             {currentYear} Ctrl Contábil. Todos os direitos reservados.
           </p>
           <div className="flex items-center gap-6">
-            <Link href="/termos-de-uso" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            <Link href="/termos-de-uso?return_to=/suporte" className="text-sm text-muted-foreground hover:text-primary transition-colors">
               Termos de Uso
             </Link>
-            <Link href="/privacidade" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            <Link href="/privacidade?return_to=/suporte" className="text-sm text-muted-foreground hover:text-primary transition-colors">
               Privacidade
             </Link>
           </div>

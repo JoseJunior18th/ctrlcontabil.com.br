@@ -304,10 +304,10 @@ export default async function DashboardPage() {
               >
                 Suporte
               </Link>
-              <Link href="/termos-de-uso" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link href="/termos-de-uso?return_to=/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Termos de Uso
               </Link>
-              <Link href="/privacidade" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <Link href="/privacidade?return_to=/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Privacidade
               </Link>
             </div>

@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -76,3 +78,58 @@ class DocumentCreate(BaseModel):
         if value is None:
             return None
         return sanitize_plain_text(value, max_length=120, allow_markup=False)
+
+
+class TenantCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    slug: str = Field(min_length=2, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
+    display_name: str = Field(min_length=2, max_length=160)
+    initial_admin_auth_subject: str | None = Field(default=None, min_length=1, max_length=255)
+    initial_admin_email: EmailStr | None = None
+    initial_admin_name: str | None = Field(default=None, max_length=120)
+
+    @field_validator("display_name", "initial_admin_name")
+    @classmethod
+    def sanitize_name_fields(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return sanitize_plain_text(value, max_length=160, allow_markup=False)
+
+
+class TenantRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    slug: str
+    display_name: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CompanyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    legal_name: str = Field(min_length=2, max_length=180)
+    trade_name: str | None = Field(default=None, max_length=180)
+    tax_id: str = Field(min_length=3, max_length=32)
+
+    @field_validator("legal_name", "trade_name", "tax_id")
+    @classmethod
+    def sanitize_company_fields(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return sanitize_plain_text(value, max_length=180, allow_markup=False)
+
+
+class CompanyRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    legal_name: str
+    trade_name: str | None
+    tax_id: str
+    status: str
+    created_at: datetime
+    updated_at: datetime

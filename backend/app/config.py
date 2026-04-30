@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     environment: Literal["development", "staging", "production", "test"] = "development"
     api_base_url: str = "http://127.0.0.1:5075"
     frontend_base_url: str = "http://127.0.0.1:8230"
+    database_url: str = "postgresql+asyncpg://ctrlcontabil:ctrlcontabil@127.0.0.1:5432/ctrlcontabil"
+    global_admin_roles: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["owner", "admin", "platform_owner"]
+    )
 
     authentik_issuer: str = "https://authentik.onneonline.com.br/application/o/ctrlcontabil/"
     authentik_client_id: str = "ctrlcontabil"
@@ -76,11 +80,19 @@ class Settings(BaseSettings):
         "allowed_return_hosts",
         "trusted_hosts",
         "authentik_algorithms",
+        "global_admin_roles",
         mode="before",
     )
     @classmethod
     def parse_csv_fields(cls, value: str | list[str] | None) -> list[str]:
         return _parse_csv(value)
+
+    @field_validator("database_url")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
 
     @model_validator(mode="after")
     def validate_security_defaults(self) -> "Settings":

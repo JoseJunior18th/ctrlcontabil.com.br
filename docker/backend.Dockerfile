@@ -7,6 +7,8 @@ ENV PYTHONUNBUFFERED=1
 
 COPY backend/pyproject.toml ./
 COPY backend/app ./app
+COPY backend/alembic.ini ./
+COPY backend/migrations ./migrations
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
   && python -m pip install --no-cache-dir .

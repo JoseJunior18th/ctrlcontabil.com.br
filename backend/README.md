@@ -11,6 +11,24 @@ python -m venv .venv
 .\.venv\Scripts\uvicorn app.main:app --reload --host 127.0.0.1 --port 5075
 ```
 
+## Database
+
+The backend uses PostgreSQL with one catalog schema plus isolated tenant schemas.
+Run global migrations first:
+
+```powershell
+.\.venv\Scripts\alembic -x migration_scope=global upgrade head
+```
+
+Provision a tenant and its first admin membership:
+
+```powershell
+.\.venv\Scripts\python -m app.cli provision-tenant --slug cliente-acme --name "Cliente ACME" --admin-sub "<authentik-sub>"
+```
+
+Tenant provisioning creates `public.tenants`, `public.app_users`,
+`public.tenant_memberships`, the tenant schema and its `companies` table.
+
 ## Authentik OIDC
 
 Create an Authentik OAuth2/OIDC application and set the redirect URI to:

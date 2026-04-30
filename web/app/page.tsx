@@ -137,11 +137,11 @@ export default function LoginPage() {
           <div className="mt-8 text-center">
             <p className="text-xs text-muted-foreground">
               Ao entrar, você concorda com nossos{" "}
-              <Link href="/termos-de-uso" className="text-primary hover:underline font-medium">
+              <Link href="/termos-de-uso?return_to=/" className="text-primary hover:underline font-medium">
                 Termos de Uso
               </Link>{" "}
               e{" "}
-              <Link href="/privacidade" className="text-primary hover:underline font-medium">
+              <Link href="/privacidade?return_to=/" className="text-primary hover:underline font-medium">
                 Política de Privacidade
               </Link>
             </p>

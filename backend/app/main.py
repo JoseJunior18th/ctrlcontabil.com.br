@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlencode
+from uuid import UUID
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response, status
 from fastapi.exceptions import RequestValidationError
@@ -14,17 +15,24 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parent.parent))
 
     from app.config import get_settings
+    from app.database import AsyncSessionLocal, close_db_engine, get_db_session
     from app.models import (
         AuthenticatedPrincipal,
+        CompanyCreate,
+        CompanyRead,
         DocumentCreate,
         DocumentSearchParams,
         PublicUser,
         SessionPayload,
+        TenantCreate,
+        TenantRead,
     )
     from app.oidc import (
         OIDCState,
@@ -48,14 +56,27 @@ if __package__ in {None, ""}:
         safe_redirect_target,
         set_session_cookie,
     )
+    from app.tenancy import (
+        create_company,
+        create_tenant,
+        list_accessible_tenants,
+        list_companies,
+        resolve_tenant_access,
+        upsert_app_user,
+    )
 else:
     from .config import get_settings
+    from .database import AsyncSessionLocal, close_db_engine, get_db_session
     from .models import (
         AuthenticatedPrincipal,
+        CompanyCreate,
+        CompanyRead,
         DocumentCreate,
         DocumentSearchParams,
         PublicUser,
         SessionPayload,
+        TenantCreate,
+        TenantRead,
     )
     from .oidc import (
         OIDCState,
@@ -78,6 +99,14 @@ else:
         rate_limit_key,
         safe_redirect_target,
         set_session_cookie,
+    )
+    from .tenancy import (
+        create_company,
+        create_tenant,
+        list_accessible_tenants,
+        list_companies,
+        resolve_tenant_access,
+        upsert_app_user,
     )
 
 logging.basicConfig(level=logging.INFO)
@@ -201,6 +230,12 @@ async def current_principal(request: Request) -> AuthenticatedPrincipal:
 
 
 PrincipalDep = Annotated[AuthenticatedPrincipal, Depends(current_principal)]
+DbSessionDep = Annotated[AsyncSession, Depends(get_db_session)]
+
+
+@app.on_event("shutdown")
+async def shutdown_database() -> None:
+    await close_db_engine()
 
 
 @app.get("/healthz")
@@ -283,6 +318,10 @@ async def callback(
         return auth_error_redirect("token_validation_failed")
 
     principal = principal_from_claims(claims)
+    async with AsyncSessionLocal() as db_session:
+        async with db_session.begin():
+            await upsert_app_user(db_session, principal, settings)
+
     session_token = issue_session_token(principal, settings)
 
     response = RedirectResponse(oidc_state.return_to)
@@ -330,6 +369,74 @@ async def backchannel_logout(logout_token: Annotated[str, Form(max_length=8192)]
 @app.get("/api/profile", response_model=PublicUser)
 async def profile(principal: PrincipalDep) -> PublicUser:
     return PublicUser.from_principal(principal)
+
+
+@app.get("/api/tenants", response_model=list[TenantRead])
+async def tenants(principal: PrincipalDep, db_session: DbSessionDep) -> list[TenantRead]:
+    async with db_session.begin():
+        rows = await list_accessible_tenants(db_session, principal, settings)
+        return [TenantRead.model_validate(row) for row in rows]
+
+
+@app.post("/api/tenants", response_model=TenantRead, status_code=status.HTTP_201_CREATED)
+async def create_tenant_endpoint(
+    principal: PrincipalDep,
+    db_session: DbSessionDep,
+    payload: TenantCreate,
+) -> TenantRead:
+    async with db_session.begin():
+        tenant = await create_tenant(
+            db_session,
+            principal=principal,
+            settings=settings,
+            payload=payload,
+        )
+        return TenantRead.model_validate(tenant)
+
+
+@app.get("/api/tenants/{tenant_id}/companies", response_model=list[CompanyRead])
+async def tenant_companies(
+    principal: PrincipalDep,
+    db_session: DbSessionDep,
+    tenant_id: UUID,
+) -> list[CompanyRead]:
+    async with db_session.begin():
+        tenant, _app_user = await resolve_tenant_access(db_session, principal, settings, tenant_id)
+        rows = await list_companies(db_session, tenant=tenant)
+        return [CompanyRead.model_validate(row) for row in rows]
+
+
+@app.post(
+    "/api/tenants/{tenant_id}/companies",
+    response_model=CompanyRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_tenant_company(
+    principal: PrincipalDep,
+    db_session: DbSessionDep,
+    tenant_id: UUID,
+    payload: CompanyCreate,
+) -> CompanyRead:
+    try:
+        async with db_session.begin():
+            tenant, app_user = await resolve_tenant_access(
+                db_session,
+                principal,
+                settings,
+                tenant_id,
+            )
+            company = await create_company(
+                db_session,
+                tenant=tenant,
+                app_user=app_user,
+                payload=payload,
+            )
+            return CompanyRead.model_validate(company)
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Empresa ja cadastrada neste ambiente.",
+        ) from exc
 
 
 @app.get("/api/documents")

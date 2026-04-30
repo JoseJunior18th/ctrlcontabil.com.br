@@ -22,7 +22,20 @@ const sections = [
   },
 ]
 
-export default function TermosDeUsoPage() {
+type LegalPageProps = {
+  searchParams?: Promise<{
+    return_to?: string | string[]
+  }>
+}
+
+function resolveReturnHref(returnTo: string | string[] | undefined): string {
+  const value = Array.isArray(returnTo) ? returnTo[0] : returnTo
+  return value === "/dashboard" || value === "/suporte" ? value : "/"
+}
+
+export default async function TermosDeUsoPage({ searchParams }: LegalPageProps) {
+  const params = await searchParams
+  const returnHref = resolveReturnHref(params?.return_to)
   const currentYear = new Date().getFullYear()
 
   return (
@@ -36,7 +49,7 @@ export default function TermosDeUsoPage() {
             <span className="text-xl font-semibold text-foreground">Ctrl Contábil</span>
           </Link>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard">
+            <Link href={returnHref}>
               <ArrowLeft className="w-4 h-4" />
               Voltar
             </Link>

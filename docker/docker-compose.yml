@@ -21,6 +21,27 @@ services:
     networks:
       - egress
 
+  db:
+    container_name: ctrlcontabil-db
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ctrlcontabil}
+      POSTGRES_USER: ${POSTGRES_USER:-ctrlcontabil}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ctrlcontabil}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ctrlcontabil-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - egress
+
   api:
     container_name: ctrlcontabil-api
     build:
@@ -41,6 +62,8 @@ services:
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME}
       SECURE_COOKIES: ${SECURE_COOKIES}
       ENABLE_HTTPS_REDIRECT: ${ENABLE_HTTPS_REDIRECT}
+      DATABASE_URL: ${DATABASE_URL}
+      GLOBAL_ADMIN_ROLES: ${GLOBAL_ADMIN_ROLES}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
       ALLOWED_RETURN_HOSTS: ${ALLOWED_RETURN_HOSTS}
       TRUSTED_HOSTS: ${TRUSTED_HOSTS}
@@ -53,6 +76,9 @@ services:
       # SAML_IDP_X509_CERT: ${SAML_IDP_X509_CERT}
       # SAML_SP_X509_CERT: ${SAML_SP_X509_CERT}
       # SAML_SP_PRIVATE_KEY: ${SAML_SP_PRIVATE_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -71,3 +97,6 @@ services:
 networks:
   egress:
     driver: bridge
+
+volumes:
+  ctrlcontabil-db-data:
