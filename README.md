@@ -70,6 +70,33 @@ O Compose publica o Next em `127.0.0.1:8230` e a API em `127.0.0.1:5075`.
 O Nginx em `infra/nginx/ctrlcontabil.josejunior.eng.br.conf` faz o roteamento
 same-origin para preservar o cookie `__Host-ctrl_session`.
 
-O Compose tambem sobe um PostgreSQL em `127.0.0.1:5432`. A API usa schemas
-separados por cliente: o schema `public` guarda tenants, usuarios e permissoes;
-cada tenant recebe um schema proprio com a tabela `companies`.
+O Compose tambem sobe um PostgreSQL apenas na rede interna do Docker, sem
+publicar a porta `5432` no host. A API acessa o banco por `db:5432`. A senha em
+`POSTGRES_PASSWORD` precisa ser a mesma senha presente em `DATABASE_URL`. Se o
+volume do Postgres ja tiver sido criado com outra senha, alterar o `.env` nao
+troca a senha do banco existente.
+
+Antes da API iniciar, o servico `migrate` executa as migracoes globais do
+Alembic e cria as tabelas do schema `public`, incluindo `public.app_users`.
+Se precisar rodar manualmente em um servidor ja criado:
+
+```bash
+cd docker
+docker compose run --rm migrate
+docker compose restart api
+```
+
+Para um banco novo, sem dados a preservar, recrie o volume:
+
+```bash
+cd docker
+docker compose down -v
+docker compose up -d --build
+```
+
+Para preservar dados, altere a senha dentro do Postgres ou ajuste a
+`DATABASE_URL` para a senha que ja existe no volume.
+
+A API usa schemas separados por cliente: o schema `public` guarda tenants,
+usuarios e permissoes; cada tenant recebe um schema proprio com a tabela
+`companies`.
