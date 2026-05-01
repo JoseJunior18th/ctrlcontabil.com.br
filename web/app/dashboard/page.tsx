@@ -1,5 +1,5 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
   const session = await getServerSession()
 
   if (!session) {
-    redirect("/")
+    redirect("/app")
   }
 
   const displayName = session.name ?? session.preferredUsername ?? "Usuario"
