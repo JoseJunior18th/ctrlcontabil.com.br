@@ -66,6 +66,11 @@ Use `docker/.env` para os valores reais de producao. O modelo fica em
 interpolar o bloco `environment:` dos servicos; ele nao e copiado para a imagem
 nem precisa existir dentro de `web/` ou `backend/`.
 
+Em producao, `API_BASE_URL`, `NEXT_PUBLIC_API_BASE_URL` e `FRONTEND_BASE_URL`
+devem apontar para o dominio HTTPS publico, por exemplo
+`https://ctrlcontabil.josejunior.eng.br`. Mantenha `API_INTERNAL_BASE_URL` como
+`http://api:5075`, pois ele e usado apenas entre os containers.
+
 ```bash
 cp docker/env.example docker/.env
 docker compose --env-file docker/.env -f docker/docker-compose.yml up -d --build

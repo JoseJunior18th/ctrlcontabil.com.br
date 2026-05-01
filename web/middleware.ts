@@ -6,6 +6,10 @@ const apiInternalBaseUrl = process.env.API_INTERNAL_BASE_URL ?? apiBaseUrl
 const frontendBaseUrl = process.env.FRONTEND_BASE_URL?.replace(/\/+$/, "")
 const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? "__Host-ctrl_session"
 
+function isLoopback(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1"
+}
+
 function buildReturnTo(request: NextRequest): string {
   if (!frontendBaseUrl) {
     return request.nextUrl.href
@@ -16,7 +20,13 @@ function buildReturnTo(request: NextRequest): string {
 }
 
 function buildLoginRedirect(request: NextRequest): NextResponse {
-  const loginUrl = new URL("/auth/login", apiBaseUrl)
+  const configuredApiUrl = new URL(apiBaseUrl)
+  const requestHost = request.nextUrl.hostname
+  const authBaseUrl =
+    isLoopback(configuredApiUrl.hostname) && !isLoopback(requestHost)
+      ? request.nextUrl.origin
+      : configuredApiUrl.origin
+  const loginUrl = new URL("/auth/login", authBaseUrl)
   loginUrl.searchParams.set("return_to", buildReturnTo(request))
   return NextResponse.redirect(loginUrl)
 }
