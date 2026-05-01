@@ -6,7 +6,7 @@ import { getLoginUrl } from "@/lib/server/auth"
 export const dynamic = "force-dynamic"
 
 export default function LoginPage() {
-  const loginUrl = getLoginUrl("/dashboard")
+  const loginUrl = getLoginUrl("/app")
 
   return (
     <main className="min-h-screen flex">

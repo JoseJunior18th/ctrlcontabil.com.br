@@ -52,7 +52,12 @@ Migrações e tenant inicial:
 cd backend
 .\.venv\Scripts\alembic -x migration_scope=global upgrade head
 .\.venv\Scripts\python -m app.cli provision-tenant --slug cliente-acme --name "Cliente ACME" --admin-sub "<sub-authentik>"
+.\.venv\Scripts\alembic -x migration_scope=tenant -x tenant_schema=tenant_cliente_acme upgrade head
 ```
+
+Depois do login, a primeira tela autenticada e `/app`. O dashboard geral fica em
+`/app/dashboard`, e o modulo de empresas fica em
+`/app/tenants/<tenant-id>/empresas`.
 
 ## Deploy com Docker
 
@@ -83,6 +88,16 @@ Se precisar rodar manualmente em um servidor ja criado:
 ```bash
 cd docker
 docker compose run --rm migrate
+docker compose restart api
+```
+
+As migracoes de tenant precisam rodar para cada schema `tenant_*` existente,
+especialmente quando houver alteracoes na tabela `companies`:
+
+```bash
+for schema in $(docker compose exec -T api python -m app.cli list-tenants | awk '{print $3}'); do
+  docker compose run --rm migrate alembic -x migration_scope=tenant -x tenant_schema="$schema" upgrade head
+done
 docker compose restart api
 ```
 

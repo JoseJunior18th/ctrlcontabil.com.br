@@ -36,7 +36,7 @@ export function getFrontendBaseUrl(): string {
   ).replace(/\/+$/, "")
 }
 
-export function getLoginUrl(returnTo = "/dashboard"): string {
+export function getLoginUrl(returnTo = "/app"): string {
   const loginUrl = new URL("/auth/login", getApiBaseUrl())
   loginUrl.searchParams.set("return_to", returnTo)
   return loginUrl.toString()

@@ -6,6 +6,16 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .sanitization import sanitize_plain_text
 
+CompanyStatus = Literal["active", "inactive"]
+TaxRegime = Literal[
+    "simples_nacional",
+    "lucro_presumido",
+    "lucro_real",
+    "mei",
+    "isento",
+    "outro",
+]
+
 
 class AuthenticatedPrincipal(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
@@ -108,14 +118,106 @@ class TenantRead(BaseModel):
     updated_at: datetime
 
 
-class CompanyCreate(BaseModel):
+class CompanyListParams(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    page: int = Field(default=1, ge=1, le=1000)
+    page_size: int = Field(default=20, ge=1, le=100)
+    q: str | None = Field(default=None, max_length=80)
+    status: CompanyStatus | Literal["all"] = "active"
+
+    @field_validator("q")
+    @classmethod
+    def sanitize_query(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        sanitized = sanitize_plain_text(value, max_length=80, allow_markup=False)
+        return sanitized or None
+
+
+class CompanyBase(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     legal_name: str = Field(min_length=2, max_length=180)
     trade_name: str | None = Field(default=None, max_length=180)
     tax_id: str = Field(min_length=3, max_length=32)
+    tax_regime: TaxRegime | None = None
+    state_registration: str | None = Field(default=None, max_length=40)
+    municipal_registration: str | None = Field(default=None, max_length=40)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=40)
+    postal_code: str | None = Field(default=None, max_length=20)
+    street: str | None = Field(default=None, max_length=160)
+    number: str | None = Field(default=None, max_length=30)
+    complement: str | None = Field(default=None, max_length=120)
+    district: str | None = Field(default=None, max_length=120)
+    city: str | None = Field(default=None, max_length=120)
+    state: str | None = Field(default=None, max_length=2, min_length=2)
+    country: str = Field(default="BR", min_length=2, max_length=2)
 
-    @field_validator("legal_name", "trade_name", "tax_id")
+    @field_validator(
+        "legal_name",
+        "trade_name",
+        "tax_id",
+        "state_registration",
+        "municipal_registration",
+        "phone",
+        "postal_code",
+        "street",
+        "number",
+        "complement",
+        "district",
+        "city",
+        "state",
+        "country",
+    )
+    @classmethod
+    def sanitize_company_fields(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return sanitize_plain_text(value, max_length=180, allow_markup=False)
+
+
+class CompanyCreate(CompanyBase):
+    pass
+
+
+class CompanyUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    legal_name: str | None = Field(default=None, min_length=2, max_length=180)
+    trade_name: str | None = Field(default=None, max_length=180)
+    tax_id: str | None = Field(default=None, min_length=3, max_length=32)
+    tax_regime: TaxRegime | None = None
+    state_registration: str | None = Field(default=None, max_length=40)
+    municipal_registration: str | None = Field(default=None, max_length=40)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=40)
+    postal_code: str | None = Field(default=None, max_length=20)
+    street: str | None = Field(default=None, max_length=160)
+    number: str | None = Field(default=None, max_length=30)
+    complement: str | None = Field(default=None, max_length=120)
+    district: str | None = Field(default=None, max_length=120)
+    city: str | None = Field(default=None, max_length=120)
+    state: str | None = Field(default=None, max_length=2, min_length=2)
+    country: str | None = Field(default=None, min_length=2, max_length=2)
+
+    @field_validator(
+        "legal_name",
+        "trade_name",
+        "tax_id",
+        "state_registration",
+        "municipal_registration",
+        "phone",
+        "postal_code",
+        "street",
+        "number",
+        "complement",
+        "district",
+        "city",
+        "state",
+        "country",
+    )
     @classmethod
     def sanitize_company_fields(cls, value: str | None) -> str | None:
         if value is None:
@@ -130,6 +232,28 @@ class CompanyRead(BaseModel):
     legal_name: str
     trade_name: str | None
     tax_id: str
-    status: str
+    status: CompanyStatus
+    tax_regime: TaxRegime | None
+    state_registration: str | None
+    municipal_registration: str | None
+    email: str | None
+    phone: str | None
+    postal_code: str | None
+    street: str | None
+    number: str | None
+    complement: str | None
+    district: str | None
+    city: str | None
+    state: str | None
+    country: str
     created_at: datetime
     updated_at: datetime
+
+
+class CompanyListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    items: list[CompanyRead]
+    page: int
+    page_size: int
+    total: int

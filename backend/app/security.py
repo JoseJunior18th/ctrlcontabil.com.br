@@ -45,7 +45,7 @@ def normalize_string_claims(value: Any) -> tuple[str, ...]:
 
 
 def safe_redirect_target(return_to: str | None, settings: Settings) -> str:
-    fallback = urljoin(settings.frontend_base_url.rstrip("/") + "/", "dashboard")
+    fallback = urljoin(settings.frontend_base_url.rstrip("/") + "/", "app")
     if not return_to:
         return fallback
 

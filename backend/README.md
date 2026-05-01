@@ -24,10 +24,13 @@ Provision a tenant and its first admin membership:
 
 ```powershell
 .\.venv\Scripts\python -m app.cli provision-tenant --slug cliente-acme --name "Cliente ACME" --admin-sub "<authentik-sub>"
+.\.venv\Scripts\alembic -x migration_scope=tenant -x tenant_schema=tenant_cliente_acme upgrade head
 ```
 
 Tenant provisioning creates `public.tenants`, `public.app_users`,
 `public.tenant_memberships`, the tenant schema and its `companies` table.
+Run tenant migrations for every existing tenant schema when company fields
+change.
 
 ## Authentik OIDC
 

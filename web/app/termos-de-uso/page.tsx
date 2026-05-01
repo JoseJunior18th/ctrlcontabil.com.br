@@ -30,7 +30,7 @@ type LegalPageProps = {
 
 function resolveReturnHref(returnTo: string | string[] | undefined): string {
   const value = Array.isArray(returnTo) ? returnTo[0] : returnTo
-  return value === "/dashboard" || value === "/suporte" ? value : "/"
+  return value === "/app" || value === "/app/dashboard" || value === "/suporte" ? value : "/"
 }
 
 export default async function TermosDeUsoPage({ searchParams }: LegalPageProps) {
@@ -42,7 +42,7 @@ export default async function TermosDeUsoPage({ searchParams }: LegalPageProps) 
     <main className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/95">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3">
+          <Link href="/app" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
               <FileText className="w-5 h-5 text-primary-foreground" />
             </div>

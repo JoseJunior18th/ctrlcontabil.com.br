@@ -13,14 +13,14 @@ export default function SuportePage() {
     <main className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/95">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3">
+          <Link href="/app" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-semibold text-foreground">Ctrl Contábil</span>
           </Link>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard">
+            <Link href="/app">
               <ArrowLeft className="w-4 h-4" />
               Voltar
             </Link>

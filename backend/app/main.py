@@ -26,7 +26,10 @@ if __package__ in {None, ""}:
     from app.models import (
         AuthenticatedPrincipal,
         CompanyCreate,
+        CompanyListParams,
+        CompanyListResponse,
         CompanyRead,
+        CompanyUpdate,
         DocumentCreate,
         DocumentSearchParams,
         PublicUser,
@@ -59,9 +62,12 @@ if __package__ in {None, ""}:
     from app.tenancy import (
         create_company,
         create_tenant,
+        get_company,
         list_accessible_tenants,
         list_companies,
         resolve_tenant_access,
+        set_company_status,
+        update_company,
         upsert_app_user,
     )
 else:
@@ -70,7 +76,10 @@ else:
     from .models import (
         AuthenticatedPrincipal,
         CompanyCreate,
+        CompanyListParams,
+        CompanyListResponse,
         CompanyRead,
+        CompanyUpdate,
         DocumentCreate,
         DocumentSearchParams,
         PublicUser,
@@ -103,9 +112,12 @@ else:
     from .tenancy import (
         create_company,
         create_tenant,
+        get_company,
         list_accessible_tenants,
         list_companies,
         resolve_tenant_access,
+        set_company_status,
+        update_company,
         upsert_app_user,
     )
 
@@ -139,7 +151,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_origins=settings.allowed_origins,
 )
 app.include_router(saml_router)
@@ -394,16 +406,22 @@ async def create_tenant_endpoint(
         return TenantRead.model_validate(tenant)
 
 
-@app.get("/api/tenants/{tenant_id}/companies", response_model=list[CompanyRead])
+@app.get("/api/tenants/{tenant_id}/companies", response_model=CompanyListResponse)
 async def tenant_companies(
     principal: PrincipalDep,
     db_session: DbSessionDep,
     tenant_id: UUID,
-) -> list[CompanyRead]:
+    params: Annotated[CompanyListParams, Depends()],
+) -> CompanyListResponse:
     async with db_session.begin():
         tenant, _app_user = await resolve_tenant_access(db_session, principal, settings, tenant_id)
-        rows = await list_companies(db_session, tenant=tenant)
-        return [CompanyRead.model_validate(row) for row in rows]
+        rows, total = await list_companies(db_session, tenant=tenant, params=params)
+        return CompanyListResponse(
+            items=[CompanyRead.model_validate(row) for row in rows],
+            page=params.page,
+            page_size=params.page_size,
+            total=total,
+        )
 
 
 @app.post(
@@ -437,6 +455,88 @@ async def create_tenant_company(
             status_code=status.HTTP_409_CONFLICT,
             detail="Empresa ja cadastrada neste ambiente.",
         ) from exc
+
+
+@app.get("/api/tenants/{tenant_id}/companies/{company_id}", response_model=CompanyRead)
+async def tenant_company(
+    principal: PrincipalDep,
+    db_session: DbSessionDep,
+    tenant_id: UUID,
+    company_id: UUID,
+) -> CompanyRead:
+    async with db_session.begin():
+        tenant, _app_user = await resolve_tenant_access(db_session, principal, settings, tenant_id)
+        company = await get_company(db_session, tenant=tenant, company_id=company_id)
+        return CompanyRead.model_validate(company)
+
+
+@app.patch("/api/tenants/{tenant_id}/companies/{company_id}", response_model=CompanyRead)
+async def update_tenant_company(
+    principal: PrincipalDep,
+    db_session: DbSessionDep,
+    tenant_id: UUID,
+    company_id: UUID,
+    payload: CompanyUpdate,
+) -> CompanyRead:
+    try:
+        async with db_session.begin():
+            tenant, app_user = await resolve_tenant_access(
+                db_session,
+                principal,
+                settings,
+                tenant_id,
+            )
+            company = await update_company(
+                db_session,
+                tenant=tenant,
+                app_user=app_user,
+                company_id=company_id,
+                payload=payload,
+            )
+            return CompanyRead.model_validate(company)
+    except IntegrityError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Empresa ja cadastrada neste ambiente.",
+        ) from exc
+
+
+@app.post("/api/tenants/{tenant_id}/companies/{company_id}/deactivate", response_model=CompanyRead)
+async def deactivate_tenant_company(
+    principal: PrincipalDep,
+    db_session: DbSessionDep,
+    tenant_id: UUID,
+    company_id: UUID,
+) -> CompanyRead:
+    async with db_session.begin():
+        tenant, app_user = await resolve_tenant_access(db_session, principal, settings, tenant_id)
+        company = await set_company_status(
+            db_session,
+            tenant=tenant,
+            app_user=app_user,
+            company_id=company_id,
+            status_value="inactive",
+        )
+        return CompanyRead.model_validate(company)
+
+
+@app.post("/api/tenants/{tenant_id}/companies/{company_id}/reactivate", response_model=CompanyRead)
+async def reactivate_tenant_company(
+    principal: PrincipalDep,
+    db_session: DbSessionDep,
+    tenant_id: UUID,
+    company_id: UUID,
+) -> CompanyRead:
+    async with db_session.begin():
+        tenant, app_user = await resolve_tenant_access(db_session, principal, settings, tenant_id)
+        company = await set_company_status(
+            db_session,
+            tenant=tenant,
+            app_user=app_user,
+            company_id=company_id,
+            status_value="active",
+        )
+        return CompanyRead.model_validate(company)
 
 
 @app.get("/api/documents")
